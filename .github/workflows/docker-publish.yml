@@ -1,0 +1,39 @@
+# Guardar en tu fork como: .github/workflows/docker-publish.yml
+# Construye y publica la imagen en GHCR cada vez que hagas push a la rama newsletter-stable.
+# Imagen resultante: ghcr.io/TU_USUARIO/evolution-api:newsletter-stable
+name: Publish Docker image
+
+on:
+  push:
+    branches:
+      - newsletter-stable
+  workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña Actions
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write      # necesario para publicar en GHCR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # token automático, no configuras nada
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/evolution-api:newsletter-stable
+            ghcr.io/${{ github.repository_owner }}/evolution-api:2.3.7-newsletter
