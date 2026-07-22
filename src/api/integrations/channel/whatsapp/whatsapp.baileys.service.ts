@@ -2208,6 +2208,19 @@ export class BaileysStartupService extends ChannelStartupService {
     }
 
     if (!message['audio'] && !message['poll'] && !message['sticker'] && sender != 'status@broadcast') {
+      // Channels (@newsletter): relay the content directly, like the viewOnce
+      // branch above. The `forward` wrapper is not accepted on newsletters.
+      if (isJidNewsletter(sender)) {
+        const m = generateWAMessageFromContent(sender, message, {
+          timestamp: new Date(),
+          userJid: this.instance.wuid,
+          messageId,
+          quoted,
+        });
+        const id = await this.client.relayMessage(sender, message, { messageId });
+        m.key = { id: id, remoteJid: sender, participant: undefined, fromMe: true };
+        return m;
+      }
       return await this.client.sendMessage(
         sender,
         {
@@ -2743,7 +2756,7 @@ export class BaileysStartupService extends ChannelStartupService {
     return statusSent;
   }
 
-  private async prepareMediaMessage(mediaMessage: MediaMessage) {
+  private async prepareMediaMessage(mediaMessage: MediaMessage, targetJid?: string) {
     try {
       const type = mediaMessage.mediatype === 'ptv' ? 'video' : mediaMessage.mediatype;
 
@@ -2781,11 +2794,14 @@ export class BaileysStartupService extends ChannelStartupService {
           : Buffer.from(mediaMessage.media, 'base64');
       }
 
+      // `jid` makes Baileys upload RAW (unencrypted) media when the target is a
+      // channel (@newsletter) — same injection Baileys' own sendMessage does.
+      // E2E-encrypted media is rejected by the server on newsletters (error 479).
       const prepareMedia = await prepareWAMessageMedia(
         {
           [type]: mediaInput,
         } as any,
-        { upload: this.client.waUploadToServer },
+        { upload: this.client.waUploadToServer, jid: targetJid } as any,
       );
 
       const mediaType = mediaMessage.mediatype + 'Message';
@@ -2983,7 +2999,7 @@ export class BaileysStartupService extends ChannelStartupService {
 
     if (file) mediaData.media = file.buffer.toString('base64');
 
-    const generate = await this.prepareMediaMessage(mediaData);
+    const generate = await this.prepareMediaMessage(mediaData, createJid(data.number));
 
     const mediaSent = await this.sendMessageWithTyping(
       data.number,
@@ -3014,7 +3030,7 @@ export class BaileysStartupService extends ChannelStartupService {
 
     if (file) mediaData.media = file.buffer.toString('base64');
 
-    const generate = await this.prepareMediaMessage(mediaData);
+    const generate = await this.prepareMediaMessage(mediaData, createJid(data.number));
 
     const mediaSent = await this.sendMessageWithTyping(
       data.number,
