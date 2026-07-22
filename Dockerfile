@@ -12,6 +12,8 @@ WORKDIR /evolution
 COPY ./package*.json ./
 COPY ./tsconfig.json ./
 COPY ./tsup.config.ts ./
+# patch-package (postinstall) necesita los parches durante npm ci
+COPY ./patches ./patches
 
 RUN npm ci --silent
 

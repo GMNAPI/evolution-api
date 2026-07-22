@@ -1,0 +1,64 @@
+diff --git a/node_modules/baileys/lib/Utils/messages-media.js b/node_modules/baileys/lib/Utils/messages-media.js
+index 0d32dfb..a086fee 100644
+--- a/node_modules/baileys/lib/Utils/messages-media.js
++++ b/node_modules/baileys/lib/Utils/messages-media.js
+@@ -507,7 +507,7 @@ export function extensionForMediaMessage(message) {
+     return extension;
+ }
+ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger, options }, refreshMediaConn) => {
+-    return async (filePath, { mediaType, fileEncSha256B64, timeoutMs }) => {
++    return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, newsletter }) => {
+         // send a query JSON to obtain the url & auth token to upload our media
+         let uploadInfo = await refreshMediaConn(false);
+         let urls;
+@@ -516,7 +516,10 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger, opt
+         for (const { hostname } of hosts) {
+             logger.debug(`uploading to "${hostname}"`);
+             const auth = encodeURIComponent(uploadInfo.auth); // the auth token
+-            const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`;
++            const mediaPath = newsletter
++                ? String(MEDIA_PATH_MAP[mediaType]).replace('/mms/', '/newsletter/newsletter-')
++                : MEDIA_PATH_MAP[mediaType];
++            const url = `https://${hostname}${mediaPath}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`;
+             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             let result;
+             try {
+@@ -551,6 +554,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger, opt
+                     urls = {
+                         mediaUrl: result.url,
+                         directPath: result.direct_path,
++                        handle: result.handle,
+                         meta_hmac: result.meta_hmac,
+                         fbid: result.fbid,
+                         ts: result.ts
+diff --git a/node_modules/baileys/lib/Utils/messages.js b/node_modules/baileys/lib/Utils/messages.js
+index eff7a53..1e0a594 100644
+--- a/node_modules/baileys/lib/Utils/messages.js
++++ b/node_modules/baileys/lib/Utils/messages.js
+@@ -100,10 +100,11 @@ export const prepareWAMessageMedia = async (message, options) => {
+         logger?.info({ key: cacheableKey }, 'Preparing raw media for newsletter');
+         const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(uploadData.media, options.mediaTypeOverride || mediaType, logger);
+         const fileSha256B64 = fileSha256.toString('base64');
+-        const { mediaUrl, directPath } = await options.upload(filePath, {
++        const { mediaUrl, directPath, handle } = await options.upload(filePath, {
+             fileEncSha256B64: fileSha256B64,
+             mediaType: mediaType,
+-            timeoutMs: options.mediaUploadTimeoutMs
++            timeoutMs: options.mediaUploadTimeoutMs,
++            newsletter: true
+         });
+         await fs.unlink(filePath);
+         const obj = WAProto.Message.fromObject({
+@@ -124,6 +125,12 @@ export const prepareWAMessageMedia = async (message, options) => {
+         if (obj.stickerMessage) {
+             obj.stickerMessage.stickerSentTs = Date.now();
+         }
++        if (handle) {
++            const contentKey = uploadData.ptv ? 'ptvMessage' : `${mediaType}Message`;
++            if (obj[contentKey]) {
++                obj[contentKey].newsletterHandle = handle;
++            }
++        }
+         if (cacheableKey) {
+             logger?.debug({ cacheableKey }, 'set cache');
+             await options.mediaCache.set(cacheableKey, WAProto.Message.encode(obj).finish());
