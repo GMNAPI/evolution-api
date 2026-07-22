@@ -2211,13 +2211,28 @@ export class BaileysStartupService extends ChannelStartupService {
       // Channels (@newsletter): relay the content directly, like the viewOnce
       // branch above. The `forward` wrapper is not accepted on newsletters.
       if (isJidNewsletter(sender)) {
+        // Newsletter media requires the raw-upload handle as the `media_id`
+        // attribute of the message stanza (see whatsmeow MediaHandle); without
+        // it the server rejects the post asynchronously (stub 479). The handle
+        // is attached by our patched prepareWAMessageMedia and must not stay in
+        // the content (it is not a protobuf field).
+        let mediaHandle: string | undefined;
+        for (const content of Object.values(message as Record<string, any>)) {
+          if (content && typeof content === 'object' && 'newsletterHandle' in content) {
+            mediaHandle = content.newsletterHandle;
+            delete content.newsletterHandle;
+          }
+        }
         const m = generateWAMessageFromContent(sender, message, {
           timestamp: new Date(),
           userJid: this.instance.wuid,
           messageId,
           quoted,
         });
-        const id = await this.client.relayMessage(sender, message, { messageId });
+        const id = await this.client.relayMessage(sender, message, {
+          messageId,
+          additionalAttributes: mediaHandle ? { media_id: mediaHandle } : undefined,
+        });
         m.key = { id: id, remoteJid: sender, participant: undefined, fromMe: true };
         return m;
       }
