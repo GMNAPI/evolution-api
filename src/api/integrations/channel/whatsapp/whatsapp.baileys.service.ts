@@ -2223,6 +2223,12 @@ export class BaileysStartupService extends ChannelStartupService {
             delete content.newsletterHandle;
           }
         }
+        // Diagnóstico media→canal: si falta el handle, el servidor rechaza con 479.
+        this.logger.warn(
+          `[newsletter-send] jid=${sender} mediaHandle=${mediaHandle ?? 'NONE'} contentKeys=${JSON.stringify(
+            Object.keys(message as object),
+          )}`,
+        );
         const m = generateWAMessageFromContent(sender, message, {
           timestamp: new Date(),
           userJid: this.instance.wuid,
