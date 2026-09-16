@@ -5173,6 +5173,27 @@ export class BaileysStartupService extends ChannelStartupService {
       },
     };
   }
+  /**
+   * Datos de un Canal a partir de su enlace de invitación (o solo el código),
+   * sin necesidad de haber publicado ni recibido nada de él. Devuelve el JID
+   * `<n>@newsletter` que hace falta para publicar.
+   */
+  public async fetchNewsletterByInvite(invite: string) {
+    const code = invite.trim().split('/channel/').pop()?.split(/[/?#]/)[0]?.trim();
+    if (!code) {
+      throw new BadRequestException('Enlace de Canal no válido');
+    }
+    const metadata = await this.client.newsletterMetadata('invite', code);
+    if (!metadata?.id) {
+      throw new NotFoundException('Canal no encontrado para ese enlace');
+    }
+    return {
+      id: metadata.id,
+      name: (metadata as any).name ?? (metadata as any).thread_metadata?.name?.text ?? null,
+      invite: code,
+    };
+  }
+
   public async fetchChannels(query: Query<Contact>) {
     const page = Number((query as any)?.page ?? 1);
     const limit = Number((query as any)?.limit ?? (query as any)?.rows ?? 50);

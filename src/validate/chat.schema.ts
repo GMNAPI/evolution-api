@@ -306,6 +306,15 @@ export const profileStatusSchema: JSONSchema7 = {
   ...isNotEmpty('status'),
 };
 
+export const newsletterInviteSchema: JSONSchema7 = {
+  $id: v4(),
+  type: 'object',
+  properties: {
+    invite: { type: 'string', minLength: 1, description: 'Enlace https://whatsapp.com/channel/<código> o el código' },
+  },
+  required: ['invite'],
+};
+
 export const profileSchema: JSONSchema7 = {
   type: 'object',
   properties: {

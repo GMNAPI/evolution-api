@@ -5,6 +5,7 @@ import {
   DeleteMessage,
   getBase64FromMediaMessageDto,
   MarkChatUnreadDto,
+  NewsletterInviteDto,
   NumberDto,
   PrivacySettingDto,
   ProfileNameDto,
@@ -27,6 +28,7 @@ import {
   markChatUnreadSchema,
   messageUpSchema,
   messageValidateSchema,
+  newsletterInviteSchema,
   presenceSchema,
   privacySettingsSchema,
   profileNameSchema,
@@ -281,6 +283,16 @@ export class ChatRouter extends RouterBroker {
         });
 
         return res.status(HttpStatus.CREATED).json(response);
+      })
+      .post(this.routerPath('findNewsletterByInvite'), ...guards, async (req, res) => {
+        const response = await this.dataValidate<NewsletterInviteDto>({
+          request: req,
+          schema: newsletterInviteSchema,
+          ClassRef: NewsletterInviteDto,
+          execute: (instance, data) => chatController.fetchNewsletterByInvite(instance, data),
+        });
+
+        return res.status(HttpStatus.OK).json(response);
       })
       .post(this.routerPath('findChannels'), ...guards, async (req, res) => {
         const response = await this.dataValidate({
