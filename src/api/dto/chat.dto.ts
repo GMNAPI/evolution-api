@@ -30,6 +30,10 @@ export class NumberDto {
   number: string;
 }
 
+export class NewsletterInviteDto {
+  invite: string;
+}
+
 export class NumberBusiness {
   wid?: string;
   jid?: string;
